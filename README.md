@@ -40,7 +40,7 @@ npm install
 ### 3. Start the Redis Clone
 
 ```bash
-node server.js
+npm start
 ```
 
 ## Run with Docker
