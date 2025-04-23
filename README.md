@@ -67,9 +67,9 @@ redis-cli -p 6379
 
 ## Future Ideas
 
-### 1. Support for more Redis Data Structures 
-### 2. Pub/Sub Channels
-### 3. Web Interface for monitoring
+1. Support for more Redis Data Structures 
+2. Pub/Sub Channels
+3. Web Interface for monitoring
 
 ## License
 MIT - for educational and non-commercial use.
