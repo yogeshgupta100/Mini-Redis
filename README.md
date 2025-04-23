@@ -52,7 +52,7 @@ docker build -t mini-redis .
 ### 2. Run it
 
 ```bash
-docker run -d -p 6379:6379 --name redis-clone mini-redis
+docker-compose up -d --build redis-clone
 ```
 
 ### 3. Test it with redis-cli
