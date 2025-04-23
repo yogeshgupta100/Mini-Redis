@@ -1,0 +1,11 @@
+version: '3'
+services:
+  redis-clone:
+    build: .
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/app/data
+    container_name: redis-clone
+    restart: always
+    command: ["npm", "start"]

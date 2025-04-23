@@ -1,11 +1,22 @@
 const net = require('net');
 const parseRESP = require('./utils/respParser');
-const store = require('./store');
+const Store = require('./store');
 const persistence = require('./persistence');
 
-persistence.loadSnapshot();
+const store = new Store();
+
+const snapshot = persistence.loadSnapshot();
+store.load(snapshot);
+
+persistence.replayDelta().forEach(raw => {
+    const [command, ...args] = raw.trim().split(' ');
+    if (command === 'SET') store.set(args[0], args[1]);
+    if (command === 'DEL') store.del(args[0]);
+    if (command === 'EXPIRE') store.expire(args[0], parseInt(args[1]));
+});
+
 setInterval(() => {
-    persistence.saveSnapshot();
+    persistence.saveSnapshot(store);
 }, 10000);
 
 const server = net.createServer((socket) => {
@@ -42,7 +53,7 @@ const server = net.createServer((socket) => {
                         return;
                     }
                     store.set(args[1], args[2]);
-                    persistence.appendCommand(data.toString());
+                    persistence.appendToDelta(data.toString());
                     socket.write('+OK\r\n');
                     break;
                 case 'GET':
@@ -51,11 +62,7 @@ const server = net.createServer((socket) => {
                         return;
                     }
                     const value = store.get(args[1]);
-                    if (value !== undefined) {
-                        socket.write(`$${value.length}\r\n${value}\r\n`);
-                    } else {
-                        socket.write('$-1\r\n');
-                    }
+                    value ? socket.write(`$${value.length}\r\n${value}\r\n`) : socket.write(`$-1\r\n`);
                     break;
                 case 'DEL':
                     if (args.length < 2) {
@@ -63,7 +70,7 @@ const server = net.createServer((socket) => {
                         return;
                     }
                     store.del(args[1]);
-                    persistence.appendCommand(data.toString());
+                    persistence.appendToDelta(data.toString());
                     socket.write(':1\r\n');
                     break;
                 case 'EXPIRE':
@@ -72,6 +79,7 @@ const server = net.createServer((socket) => {
                         return;
                     }
                     store.expire(args[1], parseInt(args[2]));
+                    persistence.appendToDelta(data.toString());
                     socket.write(':1\r\n');
                     break;
                 case 'TTL':
@@ -93,11 +101,4 @@ const server = net.createServer((socket) => {
 
 server.listen(6379, '0.0.0.0', () => {
     console.log('Mini-Redis running on port 6379');
-});
-
-const aofCommands = persistence.replayAOF();
-aofCommands.forEach(raw => {
-    const args = parseRESP(Buffer.from(raw));
-    if (args[0] === 'SET') store.set(args[1], args[2]);
-    if (args[0] === 'GET') store.get(args[1]);
 });

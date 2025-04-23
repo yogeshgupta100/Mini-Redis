@@ -1,41 +1,46 @@
-let store = {};
-let expiryMap = {};
-
-function checkExpiry(key){
-    if(expiryMap[key] && Date.now() > expiryMap[key]){
-        delete store[key];
-        delete expiryMap[key];
+class Store {
+    constructor() {
+        this.data = new Map();
+        this.expirations = new Map();
+        this.commandLog = [];
     }
+
+    set(key,value) {
+        this.data.set(key,value);
+        this.commandLog.push(`SET ${key} ${value}`);
+    }
+
+    get(key) {
+        return this.data.get(key);
+    }
+
+    del(key) {
+        this.data.delete(key);
+        this.commandLog.push(`DEL ${key}`);
+    }
+
+    expire(key,ttl) {
+        const expireAt = Date.now() + ttl * 1000;
+        this.expirations.set(key,expireAt);
+        this.commandLog.push(`EXPIRE ${key} ${ttl}`);
+    }
+
+    getAllCommands() {
+        return this.commandLog;
+    }
+
+    dump() {
+        return {
+            data: Object.fromEntries(this.data),
+            expirations: Object.fromEntries(this.expirations),
+        };
+    }
+
+    load(snapshot) {
+        this.data = new Map(Object.entries(snapshot.data || {}));
+        this.expirations = new Map(Object.entries(snapshot.expirations || {}));
+    }
+        
 }
 
-module.exports = {
-    set(key , value){
-        store[key] = value;
-    },
-    get(key){
-        checkExpiry(key);
-        return store[key];
-    },
-    del(key){
-        delete store[key];
-        delete expiryMap[key];
-    },
-    expire(key,seconds){
-        expiryMap[key] = Date.now() + seconds * 1000;
-    },
-    ttl(key){
-        if(!expiryMap[key]){
-            return -1;
-        }
-        const remainingTime = expiryMap[key] - Date.now();
-        return remainingTime > 0 ? remainingTime : 0;
-    },
-    dump(){
-        return {store,expiryMap};
-    },
-    load(data){
-        store = data.store || {};
-        expiryMap = data.expiryMap || {};
-    }
-};
-
+module.exports = Store;
